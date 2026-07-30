@@ -1,0 +1,1 @@
+'sui client call --function mint \\n\t    --package $PACKAGE_ID \\n\t    --module ${moduleName} \\n\t    --args $TREASURY_ID ${supply}000000000 $MY_ADDR \\n\t    --gas-budget 10000000\n\t  echo "✅ 铸币完成！"\n\telse\n\t  echo "⚠️ 未找到 TreasuryCap，发布后手动铸币"\n\tfi\necho ""\nec'

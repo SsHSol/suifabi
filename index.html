@@ -629,24 +629,26 @@ echo "🚀 发布..."
 PUBLISH_OUTPUT=\$(sui client publish --gas-budget 50000000)
 echo "\$PUBLISH_OUTPUT"
 
-# 6. 如果有 TreasuryCap，铸币
-TREASURY_ID=\$(echo "\$PUBLISH_OUTPUT" | grep -oP 'TreasuryCap<[^>]+>.*?ID: \\\\K(0x[a-f0-9]+)')
-PACKAGE_ID=\$(echo "\$PUBLISH_OUTPUT" | grep -oP 'PackageID: \\\\K(0x[a-f0-9]+)')
+# 6. 获取钱包地址
+	MY_ADDR=$(sui client active-address 2>/dev/null | tail -1)
+	[ -z "$MY_ADDR" ] && MY_ADDR=$(sui client active-address)
+	echo "👤 钱包: $MY_ADDR"
 
-if [ -n "\$TREASURY_ID" ] && [ -n "\$PACKAGE_ID" ]; then
-  echo ""
-  echo "📦 PackageID: \$PACKAGE_ID"
-  echo "🔑 TreasuryCap: \$TREASURY_ID"
-  echo ""
-  echo "⏳ 铸币中..."
-  sui client call --function mint \\
-    --package \$PACKAGE_ID \\
-    --module ${moduleName} \\
-    --args \$TREASURY_ID ${supply}000000000 \$ADDR \\
-    --gas-budget 10000000
-  echo "✅ 铸币完成"
-fi
+	# 7. 解析 PackageID 和 TreasuryCap
+	PACKAGE_ID=$(echo "$PUBLISH_OUTPUT" | grep "PackageID:" | awk '{print $NF}')
+	TREASURY_ID=$(echo "$PUBLISH_OUTPUT" | grep "TreasuryCap<" | grep -o '0x[a-f0-9]*' | tail -1)
 
+	if [ -n "$PACKAGE_ID" ]; then echo "📦 PackageID: $PACKAGE_ID"; fi
+
+	if [ -n "$TREASURY_ID" ]; then
+	  echo "🔑 TreasuryCap: $TREASURY_ID"
+	  echo ""
+	  echo "⏳ 铸币 ${supply} 到 $MY_ADDR..."
+	  sui client call --function mint \n	    --package $PACKAGE_ID \n	    --module ${moduleName} \n	    --args $TREASURY_ID ${supply}000000000 $MY_ADDR \n	    --gas-budget 10000000
+	  echo "✅ 铸币完成！"
+	else
+	  echo "⚠️ 未找到 TreasuryCap，发布后手动铸币"
+	fi
 echo ""
 echo "🎉 完成！查看 Sui Explorer:"
 echo "   https://suivision.xyz/package/\$PACKAGE_ID"`;
