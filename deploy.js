@@ -87,7 +87,21 @@ async function main() {
 
   // 解析结果
   const pkgId = (out.match(/PackageID:\s*(0x[a-f0-9]+)/) || [])[1];
-  const tcId = (out.match(/ObjectID:\s*(0x[a-f0-9]+)[\s\S]*?TreasuryCap/) || [])[1] || (out.match(/TreasuryCap[^}]*}\s*(0x[a-f0-9]+)/) || [])[1];
+  // TreasuryCap 在 "ObjectType: ...TreasuryCap<...>" 的上一行有 "ObjectID: 0x..."
+  const lines = out.split("\n");
+  let tcId = "";
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].includes("TreasuryCap<")) {
+      // 向上找 ObjectID
+      for (let j = i - 1; j >= Math.max(0, i - 5); j--) {
+        const m = lines[j].match(/ObjectID:\s*(0x[a-f0-9]+)/);
+        if (m) { tcId = m[1]; break; }
+      }
+      break;
+    }
+  }
+  // 备用正则
+  if (!tcId) tcId = (out.match(/TreasuryCap[^}]*}\s*(0x[a-f0-9]+)/) || [])[1];
   const addr = run(`${SUI} client active-address`).split("\n").filter(l => l.startsWith("0x")).pop() || "";
 
   console.log(`\n📦 PackageID: ${pkgId}`);
