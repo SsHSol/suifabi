@@ -554,7 +554,7 @@
         const moduleName = `token_${randomStr}`;
 
         const iconLine = iconUrl
-          ? `let icon = url::new_unsafe_from_bytes(b"${iconUrl}"); option::some(icon)`
+          ? `option::some(url::new_unsafe_from_bytes(b"${iconUrl}"))`
           : `option::none()`;
 
         const deployScript = `#!/bin/bash
