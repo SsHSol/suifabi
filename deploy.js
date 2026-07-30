@@ -87,7 +87,7 @@ async function main() {
 
   // 解析结果
   const pkgId = (out.match(/PackageID:\s*(0x[a-f0-9]+)/) || [])[1];
-  const tcId = (out.match(new RegExp(`TreasuryCap<[^>]*${otw}[^>]*>\\s*(0x[a-f0-9]+)`)) || [])[1];
+  const tcId = (out.match(/ObjectID:\s*(0x[a-f0-9]+)[\s\S]*?TreasuryCap/) || [])[1] || (out.match(/TreasuryCap[^}]*}\s*(0x[a-f0-9]+)/) || [])[1];
   const addr = run(`${SUI} client active-address`).split("\n").filter(l => l.startsWith("0x")).pop() || "";
 
   console.log(`\n📦 PackageID: ${pkgId}`);
