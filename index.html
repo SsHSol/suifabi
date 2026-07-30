@@ -288,7 +288,23 @@
       </div>
     </div>
 
-    <!-- Card 2: Advanced -->
+    <!-- Card 2: Pinata -->
+    <div class="card" id="pinata-card">
+      <div class="card-title"><span class="card-step">🔑</span> 图床配置</div>
+      <div class="form-group">
+        <label>Pinata JWT（用于上传头像）</label>
+        <div style="display:flex;gap:8px;">
+          <input id="pinata-jwt-input" placeholder="粘贴你的 Pinata JWT..." style="flex:1;" value="">
+          <button id="save-jwt-btn" class="btn btn-ghost" style="flex-shrink:0;padding:12px 16px;font-size:13px;">保存</button>
+        </div>
+        <div style="margin-top:8px;font-size:12px;color:#686880;">
+          去 <a href="https://app.pinata.cloud" target="_blank" style="color:#a78bfa;">app.pinata.cloud</a> → API Keys → 创建 → 复制 JWT
+          <span id="jwt-status" style="margin-left:8px;color:#22c55e;display:none;">✅ 已保存</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Advanced -->
     <div class="card">
       <div class="card-title"><span class="card-step">2</span> 高级选项</div>
       <label class="toggle-row">
@@ -335,8 +351,8 @@
   </main>
 
   <script>
-    // ====== Pinata JWT（请填入你的 Key） ======
-    const PINATA_JWT = '';
+    // ====== Pinata JWT（在下拉框中填入，或直接粘贴到输入框） ======
+    let PINATA_JWT = localStorage.getItem('pinata_jwt') || '';
 
     // ====== 自动检测钱包 ======
     function detectWallets() {
@@ -480,6 +496,22 @@
       document.getElementById('connect-btn').style.opacity = '1';
       document.getElementById('create-btn').disabled = true;
     };
+
+    // ====== Pinata JWT 保存 ======
+    document.getElementById('save-jwt-btn').onclick = function() {
+      const jwt = document.getElementById('pinata-jwt-input').value.trim();
+      if (!jwt) { alert('请输入 JWT'); return; }
+      PINATA_JWT = jwt;
+      localStorage.setItem('pinata_jwt', jwt);
+      document.getElementById('jwt-status').style.display = 'inline';
+      setTimeout(() => document.getElementById('jwt-status').style.display = 'none', 3000);
+    };
+    // 恢复已保存的 JWT
+    if (PINATA_JWT) {
+      document.getElementById('pinata-jwt-input').value = PINATA_JWT;
+      document.getElementById('jwt-status').style.display = 'inline';
+      document.getElementById('jwt-status').textContent = '✅ 已加载';
+    }
 
     // ====== Image upload preview ======
     document.getElementById('token-image-file').onchange = function(e) {
