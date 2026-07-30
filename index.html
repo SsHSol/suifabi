@@ -338,18 +338,93 @@
     // ====== Pinata JWT（请填入你的 Key） ======
     const PINATA_JWT = '';
 
-    // ====== Wallet ======
+    // ====== 自动检测钱包 ======
+    function detectWallets() {
+      const found = [];
+      // 检测所有已知钱包注入对象
+      if (window.suiWallet) found.push({ id: 'suiWallet', name: 'Sui Wallet', provider: window.suiWallet });
+      if (window.sui) found.push({ id: 'sui', name: 'Sui Wallet (legacy)', provider: window.sui });
+      if (window.tokenPocket?.sui) found.push({ id: 'tokenPocket', name: 'TokenPocket', provider: window.tokenPocket.sui });
+      if (window.okxwallet?.sui) found.push({ id: 'okx', name: 'OKX Wallet', provider: window.okxwallet.sui });
+
+      // 去重（同一个钱包可能注入多个对象）
+      const unique = [];
+      const seen = new Set();
+      for (const w of found) {
+        if (!seen.has(w.name)) { seen.add(w.name); unique.push(w); }
+      }
+      return unique;
+    }
+
     let walletConnected = false;
     let walletAddr = '';
 
+    // 页面加载时自动检测
+    document.addEventListener('DOMContentLoaded', () => {
+      const wallets = detectWallets();
+      if (wallets.length > 0) {
+        document.getElementById('connect-btn').textContent = `连接钱包 (${wallets.length})`;
+      }
+    });
+
     document.getElementById('connect-btn').onclick = async function() {
-      if (!window.suiWallet) {
-        alert('请先安装 Sui Wallet 浏览器扩展');
+      const wallets = detectWallets();
+
+      if (wallets.length === 0) {
+        // 没检测到任何钱包，弹出安装引导
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;';
+        modal.innerHTML = `
+          <div style="background:#0d0d18;border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:24px;max-width:380px;width:100%;">
+            <h3 style="color:#e8e8f0;margin-bottom:16px;">没有检测到 Sui 钱包</h3>
+            <p style="color:#9898b0;font-size:14px;margin-bottom:20px;line-height:1.6;">
+              请安装以下浏览器扩展：
+            </p>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <a href="https://chrome.google.com/webstore/detail/sui-wallet/opcgpfmipidbgpenhmajoajpbobppdil" target="_blank" style="display:flex;align-items:center;gap:10px;padding:12px 16px;border:1px solid rgba(255,255,255,0.06);border-radius:12px;text-decoration:none;color:#e8e8f0;font-size:14px;">
+                <span style="font-size:20px;">🦊</span> Sui Wallet (官方)
+              </a>
+              <a href="https://chrome.google.com/webstore/detail/sui-wallet/opcgpfmipidbgpenhmajoajpbobppdil" target="_blank" style="display:flex;align-items:center;gap:10px;padding:12px 16px;border:1px solid rgba(255,255,255,0.06);border-radius:12px;text-decoration:none;color:#e8e8f0;font-size:14px;">
+                <span style="font-size:20px;">🔵</span> Martian Wallet
+              </a>
+            </div>
+            <button onclick="this.closest('div[style]').remove()" style="width:100%;margin-top:16px;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.06);color:#686880;font-size:14px;cursor:pointer;">关闭</button>
+          </div>
+        `;
+        document.body.appendChild(modal);
         return;
       }
+
+      // 如果有多个钱包，弹出选择
+      let walletProvider = wallets[0].provider;
+      if (wallets.length > 1) {
+        const chosen = await new Promise(resolve => {
+          const modal = document.createElement('div');
+          modal.style.cssText = 'position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;';
+          modal.innerHTML = `
+            <div style="background:#0d0d18;border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:24px;max-width:380px;width:100%;">
+              <h3 style="color:#e8e8f0;margin-bottom:16px;">选择钱包</h3>
+              ${wallets.map((w, i) => `
+                <button data-idx="${i}" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);border-radius:12px;color:#e8e8f0;font-size:15px;cursor:pointer;margin-bottom:8px;font-family:inherit;">
+                  🦊 ${w.name}
+                </button>
+              `).join('')}
+              <button onclick="this.closest('div[style]').remove();resolve(null)" style="width:100%;margin-top:8px;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.06);color:#686880;font-size:14px;cursor:pointer;font-family:inherit;">取消</button>
+            </div>
+          `;
+          document.body.appendChild(modal);
+          modal.querySelectorAll('button[data-idx]').forEach(btn => {
+            btn.onclick = () => { modal.remove(); resolve(wallets[parseInt(btn.dataset.idx)]); };
+          });
+        });
+        if (!chosen) return;
+        walletProvider = chosen.provider;
+      }
+
+      // 连接
       try {
-        await window.suiWallet.requestPermissions();
-        const accounts = await window.suiWallet.getAccounts();
+        await walletProvider.requestPermissions();
+        const accounts = await walletProvider.getAccounts();
         walletAddr = accounts[0];
         walletConnected = true;
         document.getElementById('wallet-addr-display').textContent = walletAddr;
