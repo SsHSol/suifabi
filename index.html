@@ -341,19 +341,23 @@
     // ====== 自动检测钱包 ======
     function detectWallets() {
       const found = [];
-      // 检测所有已知钱包注入对象
-      if (window.suiWallet) found.push({ id: 'suiWallet', name: 'Sui Wallet', provider: window.suiWallet });
-      if (window.sui) found.push({ id: 'sui', name: 'Sui Wallet (legacy)', provider: window.sui });
-      if (window.tokenPocket?.sui) found.push({ id: 'tokenPocket', name: 'TokenPocket', provider: window.tokenPocket.sui });
-      if (window.okxwallet?.sui) found.push({ id: 'okx', name: 'OKX Wallet', provider: window.okxwallet.sui });
-
-      // 去重（同一个钱包可能注入多个对象）
-      const unique = [];
-      const seen = new Set();
-      for (const w of found) {
-        if (!seen.has(w.name)) { seen.add(w.name); unique.push(w); }
+      // 检测所有已知钱包注入
+      const checks = [
+        { id: 'suiWallet', name: 'Sui Wallet', obj: window.suiWallet },
+        { id: 'sui', name: 'Sui Wallet (alt)', obj: window.sui },
+        { id: 'martian', name: 'Martian Wallet', obj: window.martian },
+        { id: 'okx', name: 'OKX Wallet', obj: window.okxwallet?.sui },
+        { id: 'tokenPocket', name: 'TokenPocket', obj: window.tokenPocket?.sui },
+        { id: 'suiSnap', name: 'MetaMask Snap', obj: window.suiSnap },
+      ];
+      for (const c of checks) {
+        if (c.obj && typeof c.obj === 'object') {
+          found.push({ id: c.id, name: c.name, provider: c.obj });
+        }
       }
-      return unique;
+      // 去重
+      const seen = new Set();
+      return found.filter(w => { const k = w.name; if (seen.has(k)) return false; seen.add(k); return true; });
     }
 
     let walletConnected = false;
@@ -365,6 +369,11 @@
       if (wallets.length > 0) {
         document.getElementById('connect-btn').textContent = `连接钱包 (${wallets.length})`;
       }
+      // 调试：控制台输出钱包信息
+      wallets.forEach(w => {
+        const methods = Object.getOwnPropertyNames(w.provider).filter(k => typeof w.provider[k] === 'function');
+        console.log(`🦊 ${w.name}:`, methods.join(', '));
+      });
     });
 
     document.getElementById('connect-btn').onclick = async function() {
@@ -421,29 +430,33 @@
         walletProvider = chosen.provider;
       }
 
-      // 连接（兼容多种钱包 API）
+      // 连接（兼容所有钱包版本）
       try {
-        // 请求权限
-        if (walletProvider.requestPermissions) {
-          await walletProvider.requestPermissions();
-        }
-
-        // 获取账户（不同的钱包用不同的方法）
         let accounts = [];
-        if (typeof walletProvider.getAccounts === 'function') {
-          accounts = await walletProvider.getAccounts();
-        } else if (walletProvider.accounts) {
-          accounts = walletProvider.accounts;
-        } else if (walletProvider.selectedAddress) {
-          accounts = [walletProvider.selectedAddress];
+
+        // 方法1: requestPermissions（legacy）
+        if (walletProvider.requestPermissions) {
+          const permResult = await walletProvider.requestPermissions();
+          // 有些钱包直接返回账户信息
+          if (permResult?.accounts) {
+            accounts = permResult.accounts;
+          }
         }
 
-        if (accounts.length === 0) {
-          // 尝试通过 features API（Wallet Standard）
-          if (walletProvider.features?.['standard:connect']) {
-            const conn = await walletProvider.features['standard:connect'].connect();
-            accounts = conn.accounts?.map(a => a.address) || [];
-          }
+        // 方法2: getAccounts
+        if (accounts.length === 0 && walletProvider.getAccounts) {
+          accounts = await walletProvider.getAccounts();
+        }
+
+        // 方法3: Wallet Standard connect
+        if (accounts.length === 0 && walletProvider.features?.['standard:connect']) {
+          const conn = await walletProvider.features['standard:connect'].connect();
+          accounts = conn.accounts?.map(a => a.address) || [];
+        }
+
+        // 方法4: 直接读属性
+        if (accounts.length === 0 && walletProvider.accounts) {
+          accounts = Array.isArray(walletProvider.accounts) ? walletProvider.accounts : [walletProvider.accounts];
         }
 
         if (accounts.length === 0) throw new Error('无法获取钱包地址');
