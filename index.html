@@ -421,10 +421,32 @@
         walletProvider = chosen.provider;
       }
 
-      // 连接
+      // 连接（兼容多种钱包 API）
       try {
-        await walletProvider.requestPermissions();
-        const accounts = await walletProvider.getAccounts();
+        // 请求权限
+        if (walletProvider.requestPermissions) {
+          await walletProvider.requestPermissions();
+        }
+
+        // 获取账户（不同的钱包用不同的方法）
+        let accounts = [];
+        if (typeof walletProvider.getAccounts === 'function') {
+          accounts = await walletProvider.getAccounts();
+        } else if (walletProvider.accounts) {
+          accounts = walletProvider.accounts;
+        } else if (walletProvider.selectedAddress) {
+          accounts = [walletProvider.selectedAddress];
+        }
+
+        if (accounts.length === 0) {
+          // 尝试通过 features API（Wallet Standard）
+          if (walletProvider.features?.['standard:connect']) {
+            const conn = await walletProvider.features['standard:connect'].connect();
+            accounts = conn.accounts?.map(a => a.address) || [];
+          }
+        }
+
+        if (accounts.length === 0) throw new Error('无法获取钱包地址');
         walletAddr = accounts[0];
         walletConnected = true;
         document.getElementById('wallet-addr-display').textContent = walletAddr;
