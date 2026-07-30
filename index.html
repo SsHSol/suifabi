@@ -236,7 +236,7 @@
   <header>
     <div class="logo">✦ Sui Token Creator</div>
     <div class="header-right">
-      <span class="network-badge">Testnet</span>
+      <span class="network-badge">Mainnet</span>
       <button id="connect-btn" class="btn btn-accent">连接钱包</button>
     </div>
   </header>
@@ -288,22 +288,6 @@
       </div>
     </div>
 
-    <!-- Card 2: Pinata -->
-    <div class="card" id="pinata-card">
-      <div class="card-title"><span class="card-step">🔑</span> 图床配置</div>
-      <div class="form-group">
-        <label>Pinata JWT（用于上传头像）</label>
-        <div style="display:flex;gap:8px;">
-          <input id="pinata-jwt-input" placeholder="粘贴你的 Pinata JWT..." style="flex:1;" value="">
-          <button id="save-jwt-btn" class="btn btn-ghost" style="flex-shrink:0;padding:12px 16px;font-size:13px;">保存</button>
-        </div>
-        <div style="margin-top:8px;font-size:12px;color:#686880;">
-          去 <a href="https://app.pinata.cloud" target="_blank" style="color:#a78bfa;">app.pinata.cloud</a> → API Keys → 创建 → 复制 JWT
-          <span id="jwt-status" style="margin-left:8px;color:#22c55e;display:none;">✅ 已保存</span>
-        </div>
-      </div>
-    </div>
-
     <!-- Card 3: Advanced -->
     <div class="card">
       <div class="card-title"><span class="card-step">2</span> 高级选项</div>
@@ -347,7 +331,7 @@
     <!-- Result -->
     <div id="result" class="result-card"></div>
 
-    <div class="footer">Powered by Sui Network · 需安装 Sui CLI</div>
+    <div class="footer">Powered by Sui Network · Mainnet · 需安装 Sui CLI</div>
   </main>
 
   <script>
@@ -497,22 +481,6 @@
       document.getElementById('create-btn').disabled = true;
     };
 
-    // ====== Pinata JWT 保存 ======
-    document.getElementById('save-jwt-btn').onclick = function() {
-      const jwt = document.getElementById('pinata-jwt-input').value.trim();
-      if (!jwt) { alert('请输入 JWT'); return; }
-      PINATA_JWT = jwt;
-      localStorage.setItem('pinata_jwt', jwt);
-      document.getElementById('jwt-status').style.display = 'inline';
-      setTimeout(() => document.getElementById('jwt-status').style.display = 'none', 3000);
-    };
-    // 恢复已保存的 JWT
-    if (PINATA_JWT) {
-      document.getElementById('pinata-jwt-input').value = PINATA_JWT;
-      document.getElementById('jwt-status').style.display = 'inline';
-      document.getElementById('jwt-status').textContent = '✅ 已加载';
-    }
-
     // ====== Image upload preview ======
     document.getElementById('token-image-file').onchange = function(e) {
       const file = e.target.files[0];
@@ -592,6 +560,9 @@
         const deployScript = `#!/bin/bash
 # Sui Token Creator - 一键发币
 # 生成的部署脚本 - ${new Date().toISOString()}
+
+# 确保使用主网
+sui client switch --env mainnet 2>/dev/null
 
 NAME="${name}"
 SYMBOL="${symbol}"
@@ -678,7 +649,7 @@ fi
 
 echo ""
 echo "🎉 完成！查看 Sui Explorer:"
-echo "   https://testnet.suivision.xyz/package/\$PACKAGE_ID"`;
+echo "   https://suivision.xyz/package/\$PACKAGE_ID"`;
 
         // Show deploy script
         steps[1].className = 'done';
